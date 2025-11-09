@@ -47,6 +47,12 @@
       flex-direction: column;
       gap: 1.5rem;
       box-shadow: 2px 0 12px rgba(15, 23, 42, 0.08);
+      position: sticky;
+      top: 0;
+      align-self: flex-start;
+      max-height: 100vh;
+      overflow-y: auto;
+      overscroll-behavior: contain;
     }
 
     .control-group {
@@ -99,6 +105,12 @@
       font-size: 0.85rem;
       color: rgba(15, 23, 42, 0.72);
     }
+
+      .spectrum-details .explain {
+        font-size: 0.84rem;
+        color: rgba(15, 23, 42, 0.7);
+        margin-top: 0.15rem;
+      }
 
     section.visuals {
       flex: 1;
@@ -208,9 +220,9 @@
       <div class="control-group">
         <label for="pathCount">
           Paths sampled
-          <span class="value" id="pathCountLabel">7</span>
+          <span class="value" id="pathCountLabel">15</span>
         </label>
-        <input type="range" id="pathCount" min="5" max="100" value="7" />
+        <input type="range" id="pathCount" min="5" max="100" value="15" />
         <small style="color: rgba(15, 23, 42, 0.6);">
           Think of these as evenly spaced alternative routes between the same points.
         </small>
@@ -219,20 +231,32 @@
       <div class="control-group">
         <label for="spectrumBand">
           Clock speed
-          <span class="value" id="spectrumLabel">Visible (red)</span>
+          <span class="value" id="spectrumLabel">Red</span>
         </label>
-        <input type="range" id="spectrumBand" min="0" max="9" step="1" value="4" />
+        <input type="range" id="spectrumBand" min="0" max="14" step="1" value="9" />
+      </div>
+
+      <div class="control-group">
+        <label for="gratingToggle">
+          Diffraction grating
+        </label>
+        <input type="checkbox" id="gratingToggle" />
+        <small style="color: rgba(15, 23, 42, 0.6);">
+          When on: shade and mute right-pointing arrows; add only left-pointing arrows.
+        </small>
       </div>
 
       <div class="spectrum-details" id="spectrumDetails">
-        <div><strong>Band:</strong> <span id="bandName">Visible (red)</span></div>
+        <div><strong>Band:</strong> <span id="bandName">Red</span></div>
         <div><strong>Representative wavelength:</strong> <span id="bandWavelength">650&nbsp;nm</span></div>
+        <div class="explain" id="bandWavelengthExplain">“µm” means micrometers (um): thousandths of a millimeter. ≈ 0.00 mm</div>
         <div><strong>Frequency:</strong> <span id="bandFrequency">461&nbsp;THz</span></div>
+        <div class="explain">Frequency = how many wave peaks (turns) pass a point each second.</div>
         <div><strong>Clock period:</strong> <span id="bandPeriod">2.17&nbsp;fs per turn</span></div>
+        <div class="explain" id="bandPeriodExplain">One turn takes 0 s. That's 0 turns/second. In space: ≈ 0 cycles/in.</div>
         <div><strong>Turns per femtosecond:</strong> <span id="bandTurns">0.46</span></div>
-        <div class="notes" id="bandNotes">
-          Photons from a deep red laser pointer.
-        </div>
+        <div class="explain">A femtosecond (fs) is 10⁻¹⁵ seconds (one quadrillionth of a second).</div>
+        <div class="notes" id="bandNotes">Deep red laser pointers.</div>
       </div>
     </aside>
 
@@ -245,6 +269,17 @@
         <svg id="timeSvg" viewBox="0 0 720 320" role="img" aria-label="Travel time curve per path"></svg>
         <div class="legend">
           <strong>How to read:</strong> Each cross marks a candidate path. The lower the cross, the less time the photon would spend on that route. The slider changes how many of these alternatives we sample.
+        </div>
+      </article>
+
+      <article class="panel">
+        <header>
+          <h2>Individual arrows (phase by path)</h2>
+          <span class="caption">Each path’s clock at arrival. Aligned with the labels above.</span>
+        </header>
+        <svg id="arrowsSvg" viewBox="0 0 720 220" role="img" aria-label="Individual arrows per path"></svg>
+        <div class="legend">
+          <strong>Note:</strong> Each arrow shows the direction of the clock hand for that path. Letters match the time graph.
         </div>
       </article>
 
@@ -280,56 +315,21 @@
     const SPEED_OF_LIGHT = 299_792_458; // m/s
 
     const SPECTRUM_BANDS = [
-      {
-        name: "Longwave radio",
-        wavelength: 100_000, // 100 km
-        notes: "Submarine and long-distance navigational transmitters."
-      },
-      {
-        name: "FM radio",
-        wavelength: 3, // ≈100 MHz
-        notes: "Everyday FM broadcast towers."
-      },
-      {
-        name: "Microwave oven",
-        wavelength: 0.122, // 2.45 GHz
-        notes: "Domestic microwave emitters."
-      },
-      {
-        name: "Infrared remote",
-        wavelength: 9.4e-6, // 9.4 μm
-        notes: "TV remote control LEDs."
-      },
-      {
-        name: "Visible (red)",
-        wavelength: 6.5e-7, // 650 nm
-        notes: "Deep red laser pointer."
-      },
-      {
-        name: "Visible (green)",
-        wavelength: 5.3e-7, // 530 nm
-        notes: "Green LED traffic light."
-      },
-      {
-        name: "Ultraviolet (UV-C)",
-        wavelength: 2.54e-7, // 254 nm
-        notes: "Germicidal sterilisation lamp."
-      },
-      {
-        name: "Soft X-ray",
-        wavelength: 1e-9, // 1 nm
-        notes: "Used in medical X-ray imaging."
-      },
-      {
-        name: "Hard X-ray",
-        wavelength: 1e-11, // 0.01 nm
-        notes: "Synchrotron radiation sources."
-      },
-      {
-        name: "Gamma ray",
-        wavelength: 1e-12, // 0.001 nm
-        notes: "Nuclear gamma emission."
-      }
+      { name: "Cosmic Rays", wavelength: 1e-16, notes: "Extreme-energy photons (stand‑in for upper gamma range)." },
+      { name: "Gamma Rays", wavelength: 1e-12, notes: "Nuclear gamma emission." },
+      { name: "X-Rays", wavelength: 1e-10, notes: "Medical and crystallography X‑rays." },
+      { name: "Ultraviolet Light", wavelength: 2.0e-7, notes: "UV sterilization and blacklights." },
+      { name: "Violet", wavelength: 4.0e-7, notes: "Violet end of visible spectrum." },
+      { name: "Blue", wavelength: 4.75e-7, notes: "Blue LEDs." },
+      { name: "Green", wavelength: 5.3e-7, notes: "Green traffic lights." },
+      { name: "Yellow", wavelength: 5.8e-7, notes: "Yellow sodium lamps." },
+      { name: "Orange", wavelength: 6.0e-7, notes: "Orange LEDs." },
+      { name: "Red", wavelength: 6.5e-7, notes: "Deep red laser pointers." },
+      { name: "Infrared", wavelength: 1.0e-5, notes: "Thermal IR; remote controls." },
+      { name: "Microwaves", wavelength: 1.0e-2, notes: "Microwave communications." },
+      { name: "Radar", wavelength: 3.0e-2, notes: "Common radar bands (cm waves)." },
+      { name: "Radio", wavelength: 3.0, notes: "VHF/UHF radio." },
+      { name: "Broadcast Band", wavelength: 3.0e2, notes: "AM long/medium-wave broadcast." }
     ].map((band) => ({
       ...band,
       frequency: SPEED_OF_LIGHT / band.wavelength,
@@ -338,6 +338,7 @@
 
     const pathCountInput = document.getElementById("pathCount");
     const spectrumBandInput = document.getElementById("spectrumBand");
+    const gratingToggle = document.getElementById("gratingToggle");
 
     const pathCountLabel = document.getElementById("pathCountLabel");
     const spectrumLabel = document.getElementById("spectrumLabel");
@@ -352,9 +353,11 @@
 
     const timeSvg = document.getElementById("timeSvg");
     const phasorSvg = document.getElementById("phasorSvg");
+    const arrowsSvg = document.getElementById("arrowsSvg");
 
     const TIME_VIEWBOX = { width: 720, height: 320 };
     const PHASOR_VIEWBOX = { width: 720, height: 320 };
+    const ARROWS_VIEWBOX = { width: 720, height: 220 };
 
     function formatFrequency(hz) {
       const thresholds = [
@@ -425,9 +428,10 @@
       const paths = [];
       for (let i = 0; i < count; i++) {
         const normalized = count === 1 ? 0 : (i - midpoint) / midpoint;
-        const curvature = Math.pow(normalized, 2);
-        const gentleWobble = 0.12 * Math.sin(normalized * Math.PI * 1.3);
-        const time = baseTime + spread * (curvature + gentleWobble * curvature);
+        // Symmetric time curve: even-powered terms only
+        const curvature = normalized * normalized;
+        const symmetricShape = curvature + 0.08 * curvature * curvature;
+        const time = baseTime + spread * symmetricShape;
         const colorHueStart = 206;
         const colorHueEnd = 16;
         const hue = colorHueStart + (colorHueEnd - colorHueStart) * (count === 1 ? 0.5 : i / (count - 1));
@@ -509,7 +513,7 @@
       return points;
     }
 
-    function buildPhasorSvg(points, minTime, frequency) {
+    function buildPhasorSvg(points, minTime, frequency, gratingOn) {
       const margin = { top: 32, right: 40, bottom: 32, left: 40 };
       const width = PHASOR_VIEWBOX.width;
       const height = PHASOR_VIEWBOX.height;
@@ -522,7 +526,15 @@
       const lines = [];
       let cursor = { ...start };
 
-      const endPoints = points.map((point) => {
+      const endPoints = points.filter((point) => {
+        if (!gratingOn) return true;
+        const elapsed = point.travelTime - minTime;
+        const cycles = frequency * elapsed;
+        const fractionalCycle = cycles - Math.floor(cycles);
+        const angle = fractionalCycle * 2 * Math.PI;
+        const dxProbe = Math.cos(angle);
+        return dxProbe < 0; // keep only left-pointing
+      }).map((point) => {
         const elapsed = point.travelTime - minTime;
         const cycles = frequency * elapsed;
         const fractionalCycle = cycles - Math.floor(cycles);
@@ -540,13 +552,30 @@
       const netLength = Math.hypot(netVector.x, netVector.y);
       const netAngle = Math.atan2(start.y - end.y, end.x - start.x);
 
+      // Compute bounds of the polyline to auto-center and fit if needed
+      const all = [start, ...endPoints];
+      const minX = Math.min(...all.map((p) => p.x));
+      const maxX = Math.max(...all.map((p) => p.x));
+      const minY = Math.min(...all.map((p) => p.y));
+      const maxY = Math.max(...all.map((p) => p.y));
+      const contentWidth = Math.max(1, maxX - minX);
+      const contentHeight = Math.max(1, maxY - minY);
+      const availableWidth = innerWidth;
+      const availableHeight = innerHeight;
+      const fitScale = Math.min(availableWidth / contentWidth, availableHeight / contentHeight, 1);
+      const contentCenterX = (minX + maxX) / 2;
+      const contentCenterY = (minY + maxY) / 2;
+      const targetCenterX = margin.left + innerWidth / 2;
+      const targetCenterY = margin.top + innerHeight / 2;
+      const transform = `translate(${targetCenterX.toFixed(2)} ${targetCenterY.toFixed(2)}) scale(${fitScale.toFixed(3)}) translate(${-contentCenterX.toFixed(2)} ${-contentCenterY.toFixed(2)})`;
+
       const defs = `
         <defs>
-          <marker id="arrowHead" viewBox="0 0 10 10" refX="7" refY="5" markerWidth="6" markerHeight="6" orient="auto-start-reverse">
-            <path d="M 0 0 L 10 5 L 0 10 z" fill="currentColor"></path>
+          <marker id="arrowHead" viewBox="0 0 10 10" refX="6" refY="5" markerWidth="4" markerHeight="4" orient="auto-start-reverse">
+            <path d="M 0 0 L 10 5 L 0 10 z" style="fill: context-stroke;"></path>
           </marker>
-          <marker id="netArrowHead" viewBox="0 0 10 10" refX="7" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse">
-            <path d="M 0 0 L 10 5 L 0 10 z" fill="#212529"></path>
+          <marker id="netArrowHead" viewBox="0 0 10 10" refX="6" refY="5" markerWidth="5" markerHeight="5" orient="auto-start-reverse">
+            <path d="M 0 0 L 10 5 L 0 10 z" style="fill: context-stroke;"></path>
           </marker>
         </defs>
       `;
@@ -574,7 +603,7 @@
 
       phasorSvg.innerHTML = `
         ${defs}
-        <g>
+        <g transform="${transform}">
           ${polyline}
           ${arrowLines}
           ${netLine}
@@ -589,6 +618,70 @@
       netAngleEl.textContent = `${angleDegrees.toFixed(1)}°`;
     }
 
+    function buildArrowsSvg(points, minTime, frequency, gratingOn) {
+      const margin = { top: 20, right: 24, bottom: 48, left: 68 };
+      const width = ARROWS_VIEWBOX.width;
+      const height = ARROWS_VIEWBOX.height;
+      const innerWidth = width - margin.left - margin.right;
+      const axisY = height - margin.bottom;
+
+      const arrowLength = Math.max(20, innerWidth / (points.length + 2) * 0.6);
+
+      const axis = `<path d="M ${margin.left} ${axisY} L ${width - margin.right} ${axisY}" stroke="#1f2933" stroke-width="1" stroke-linecap="round" />`;
+
+      // Precompute column boundaries for shading
+      const xs = points.map((p) => p.x);
+      const leftEdge = margin.left;
+      const rightEdge = width - margin.right;
+
+      const ticksAndArrows = points.map((p, i) => {
+        const x = p.x.toFixed(2);
+        const elapsed = p.travelTime - minTime;
+        const cycles = frequency * elapsed;
+        const fractionalCycle = cycles - Math.floor(cycles);
+        const angle = fractionalCycle * 2 * Math.PI;
+        const originY = axisY - 18;
+        const dx = Math.cos(angle) * arrowLength;
+        const dy = Math.sin(angle) * arrowLength;
+        const x2 = (p.x + dx).toFixed(2);
+        const y2 = (originY - dy).toFixed(2);
+        const isRight = dx >= 0;
+
+        // Determine shading column
+        const xl = i === 0 ? leftEdge : (xs[i - 1] + p.x) / 2;
+        const xr = i === points.length - 1 ? rightEdge : (p.x + xs[i + 1]) / 2;
+        const shadeRect = gratingOn && isRight
+          ? `<rect x="${xl.toFixed(2)}" y="${(margin.top).toFixed(2)}" width="${(xr - xl).toFixed(2)}" height="${(axisY - margin.top + 10).toFixed(2)}" fill="rgba(15,23,42,0.06)" />`
+          : "";
+
+        const strokeColor = gratingOn && isRight ? "rgba(15,23,42,0.35)" : p.color;
+        const tickColor = gratingOn && isRight ? "rgba(15, 23, 42, 0.35)" : "rgba(15, 23, 42, 0.8)";
+
+        return `
+          ${shadeRect}
+          <line x1="${x}" x2="${x}" y1="${axisY}" y2="${axisY + 8}" stroke="${tickColor}" stroke-width="1" />
+          <text x="${x}" y="${axisY + 24}" text-anchor="middle" font-size="12" fill="${tickColor}">${p.label}</text>
+          <line x1="${x}" y1="${originY}" x2="${x2}" y2="${y2}" stroke="${strokeColor}" stroke-width="2.2" marker-end="url(#arrowHead)" />
+        `;
+      }).join("");
+
+      const defs = `
+        <defs>
+          <marker id="arrowHead" viewBox="0 0 10 10" refX="6" refY="5" markerWidth="4" markerHeight="4" orient="auto-start-reverse">
+            <path d="M 0 0 L 10 5 L 0 10 z" style="fill: context-stroke;"></path>
+          </marker>
+        </defs>
+      `;
+
+      arrowsSvg.innerHTML = `
+        ${defs}
+        <g>
+          ${axis}
+          ${ticksAndArrows}
+        </g>
+      `;
+    }
+
     function updateSpectrumDetails(band) {
       pathCountLabel.textContent = pathCountInput.value;
       spectrumLabel.textContent = band.name;
@@ -598,19 +691,31 @@
       bandPeriodEl.innerHTML = `${formatDuration(band.period)} per turn`;
       bandTurnsEl.innerHTML = (band.frequency * 1e-15).toFixed(2);
       bandNotesEl.textContent = band.notes;
+
+      const mm = band.wavelength * 1e3;
+      const wavelengthExplain = document.getElementById("bandWavelengthExplain");
+      wavelengthExplain.textContent = `“µm” means micrometers (um): thousandths of a millimeter. ≈ ${mm >= 100 ? mm.toFixed(0) : mm.toFixed(3)} mm`;
+
+      const periodExplain = document.getElementById("bandPeriodExplain");
+      const cyclesPerInch = 1 / (band.wavelength * 39.3700787402);
+      const turnsPerSecond = formatFrequency(band.frequency);
+      periodExplain.textContent = `One turn takes ${formatDuration(band.period)}. That's ${turnsPerSecond} (turns/second). In space: ≈ ${cyclesPerInch >= 100 ? cyclesPerInch.toFixed(0) : cyclesPerInch.toFixed(2)} cycles/in.`;
     }
 
     function render() {
       const count = Number(pathCountInput.value);
       const band = SPECTRUM_BANDS[Number(spectrumBandInput.value)];
+      const gratingOn = Boolean(gratingToggle?.checked);
       updateSpectrumDetails(band);
       const { paths, minTime, maxTime } = computePathSet(count);
       const points = buildTimeSvg({ paths, minTime, maxTime });
-      buildPhasorSvg(points, minTime, band.frequency);
+      buildArrowsSvg(points, minTime, band.frequency, gratingOn);
+      buildPhasorSvg(points, minTime, band.frequency, gratingOn);
     }
 
     pathCountInput.addEventListener("input", render);
     spectrumBandInput.addEventListener("input", render);
+    gratingToggle.addEventListener("change", render);
     render();
   </script>
 </body>
