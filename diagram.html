@@ -1,1 +1,617 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>QED Path Explorer</title>
+  <style>
+    :root {
+      color-scheme: light;
+      font-family: "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+      background: #f8fafc;
+    }
 
+    body {
+      margin: 0;
+      color: #1f2933;
+      min-height: 100vh;
+      display: flex;
+      flex-direction: column;
+    }
+
+    header.topbar {
+      padding: 1rem 2rem;
+      background: linear-gradient(135deg, #0b7285, #1864ab);
+      color: white;
+      box-shadow: 0 1px 6px rgba(15, 23, 42, 0.25);
+    }
+
+    header.topbar h1 {
+      margin: 0;
+      font-size: clamp(1.4rem, 2vw, 2rem);
+      letter-spacing: 0.01em;
+    }
+
+    main.app {
+      flex: 1;
+      display: flex;
+      min-height: 0;
+    }
+
+    aside.controls {
+      width: min(320px, 32vw);
+      background: white;
+      border-right: 1px solid rgba(15, 23, 42, 0.08);
+      padding: 1.5rem;
+      display: flex;
+      flex-direction: column;
+      gap: 1.5rem;
+      box-shadow: 2px 0 12px rgba(15, 23, 42, 0.08);
+    }
+
+    .control-group {
+      display: flex;
+      flex-direction: column;
+      gap: 0.4rem;
+    }
+
+    .control-group label {
+      font-weight: 600;
+      font-size: 0.95rem;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+    }
+
+    .control-group label span.value {
+      font-weight: 500;
+      color: #0b7285;
+      font-variant-numeric: tabular-nums;
+    }
+
+    input[type="range"] {
+      width: 100%;
+      accent-color: #0b7285;
+    }
+
+    .spectrum-details {
+      background: linear-gradient(145deg, rgba(11, 114, 133, 0.12), rgba(24, 100, 171, 0.12));
+      border: 1px solid rgba(11, 114, 133, 0.2);
+      border-radius: 12px;
+      padding: 1rem 1.2rem;
+      display: flex;
+      flex-direction: column;
+      gap: 0.35rem;
+      line-height: 1.4;
+      font-size: 0.93rem;
+    }
+
+    .spectrum-details strong {
+      color: #084c61;
+    }
+
+    .spectrum-details span {
+      font-variant-numeric: tabular-nums;
+    }
+
+    .spectrum-details .notes {
+      margin-top: 0.35rem;
+      font-size: 0.85rem;
+      color: rgba(15, 23, 42, 0.72);
+    }
+
+    section.visuals {
+      flex: 1;
+      padding: 1.75rem 2rem;
+      display: flex;
+      flex-direction: column;
+      gap: 1.5rem;
+      overflow-y: auto;
+    }
+
+    .panel {
+      background: white;
+      border-radius: 18px;
+      padding: 1.5rem;
+      box-shadow: 0 10px 30px rgba(15, 23, 42, 0.08);
+      display: flex;
+      flex-direction: column;
+      gap: 1rem;
+    }
+
+    .panel header {
+      display: flex;
+      justify-content: space-between;
+      align-items: baseline;
+    }
+
+    .panel header h2 {
+      margin: 0;
+      font-size: 1.2rem;
+      color: #0b7285;
+      letter-spacing: 0.01em;
+    }
+
+    .panel header span.caption {
+      font-size: 0.88rem;
+      color: rgba(15, 23, 42, 0.65);
+    }
+
+    svg {
+      width: 100%;
+      height: auto;
+    }
+
+    .legend {
+      font-size: 0.85rem;
+      color: rgba(15, 23, 42, 0.7);
+    }
+
+    .legend strong {
+      color: #0b7285;
+    }
+
+    .amplitude-metrics {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 1.2rem;
+      font-size: 0.92rem;
+      color: rgba(15, 23, 42, 0.85);
+    }
+
+    .amplitude-metrics div {
+      display: flex;
+      flex-direction: column;
+      gap: 0.2rem;
+    }
+
+    .amplitude-metrics span.metric {
+      font-weight: 600;
+      color: #0b7285;
+      font-variant-numeric: tabular-nums;
+    }
+
+    footer.note {
+      padding: 1rem 2rem 1.5rem;
+      font-size: 0.85rem;
+      color: rgba(15, 23, 42, 0.62);
+    }
+
+    @media (max-width: 960px) {
+      main.app {
+        flex-direction: column;
+      }
+
+      aside.controls {
+        width: 100%;
+        box-shadow: none;
+        border-right: none;
+        border-bottom: 1px solid rgba(15, 23, 42, 0.08);
+      }
+    }
+  </style>
+</head>
+<body>
+  <header class="topbar">
+    <h1>QED Path Explorer</h1>
+  </header>
+
+  <main class="app">
+    <aside class="controls">
+      <div class="intro">
+        <p style="margin: 0; line-height: 1.5;">
+          Adjust the number of paths and the clock-speed associated with
+          different parts of the electromagnetic spectrum. The visual updates in real-time.
+        </p>
+      </div>
+
+      <div class="control-group">
+        <label for="pathCount">
+          Paths sampled
+          <span class="value" id="pathCountLabel">7</span>
+        </label>
+        <input type="range" id="pathCount" min="5" max="100" value="7" />
+        <small style="color: rgba(15, 23, 42, 0.6);">
+          Think of these as evenly spaced alternative routes between the same points.
+        </small>
+      </div>
+
+      <div class="control-group">
+        <label for="spectrumBand">
+          Clock speed
+          <span class="value" id="spectrumLabel">Visible (red)</span>
+        </label>
+        <input type="range" id="spectrumBand" min="0" max="9" step="1" value="4" />
+      </div>
+
+      <div class="spectrum-details" id="spectrumDetails">
+        <div><strong>Band:</strong> <span id="bandName">Visible (red)</span></div>
+        <div><strong>Representative wavelength:</strong> <span id="bandWavelength">650&nbsp;nm</span></div>
+        <div><strong>Frequency:</strong> <span id="bandFrequency">461&nbsp;THz</span></div>
+        <div><strong>Clock period:</strong> <span id="bandPeriod">2.17&nbsp;fs per turn</span></div>
+        <div><strong>Turns per femtosecond:</strong> <span id="bandTurns">0.46</span></div>
+        <div class="notes" id="bandNotes">
+          Photons from a deep red laser pointer.
+        </div>
+      </div>
+    </aside>
+
+    <section class="visuals">
+      <article class="panel">
+        <header>
+          <h2>Travel time vs. path</h2>
+          <span class="caption">Paths take longer near the edges because their routes are less direct.</span>
+        </header>
+        <svg id="timeSvg" viewBox="0 0 720 320" role="img" aria-label="Travel time curve per path"></svg>
+        <div class="legend">
+          <strong>How to read:</strong> Each cross marks a candidate path. The lower the cross, the less time the photon would spend on that route. The slider changes how many of these alternatives we sample.
+        </div>
+      </article>
+
+      <article class="panel">
+        <header>
+          <h2>Arrow addition (probability amplitude)</h2>
+          <span class="caption">Add the arrows tip-to-tail; the net arrow estimates the likelihood of arrival.</span>
+        </header>
+        <svg id="phasorSvg" viewBox="0 0 720 320" role="img" aria-label="Vector addition of probability amplitudes"></svg>
+        <div class="amplitude-metrics">
+          <div>
+            <span class="metric" id="netMagnitude">0.00 × arrow length</span>
+            <span>Net amplitude size</span>
+          </div>
+          <div>
+            <span class="metric" id="netAngle">0°</span>
+            <span>Net angle (phase)</span>
+          </div>
+        </div>
+        <div class="legend">
+          <strong>Tip:</strong> Central paths (minimal time difference) rotate the clock slowly, so their arrows point in nearly the same direction, reinforcing the net result.
+        </div>
+      </article>
+    </section>
+  </main>
+
+  <footer class="note">
+    Inspired by Richard Feynman's QED lectures. The calculations here are qualitative: they focus on how relative
+    travel times change rotation angles rather than reproducing an exact experiment.
+  </footer>
+
+  <script>
+    const SPEED_OF_LIGHT = 299_792_458; // m/s
+
+    const SPECTRUM_BANDS = [
+      {
+        name: "Longwave radio",
+        wavelength: 100_000, // 100 km
+        notes: "Submarine and long-distance navigational transmitters."
+      },
+      {
+        name: "FM radio",
+        wavelength: 3, // ≈100 MHz
+        notes: "Everyday FM broadcast towers."
+      },
+      {
+        name: "Microwave oven",
+        wavelength: 0.122, // 2.45 GHz
+        notes: "Domestic microwave emitters."
+      },
+      {
+        name: "Infrared remote",
+        wavelength: 9.4e-6, // 9.4 μm
+        notes: "TV remote control LEDs."
+      },
+      {
+        name: "Visible (red)",
+        wavelength: 6.5e-7, // 650 nm
+        notes: "Deep red laser pointer."
+      },
+      {
+        name: "Visible (green)",
+        wavelength: 5.3e-7, // 530 nm
+        notes: "Green LED traffic light."
+      },
+      {
+        name: "Ultraviolet (UV-C)",
+        wavelength: 2.54e-7, // 254 nm
+        notes: "Germicidal sterilisation lamp."
+      },
+      {
+        name: "Soft X-ray",
+        wavelength: 1e-9, // 1 nm
+        notes: "Used in medical X-ray imaging."
+      },
+      {
+        name: "Hard X-ray",
+        wavelength: 1e-11, // 0.01 nm
+        notes: "Synchrotron radiation sources."
+      },
+      {
+        name: "Gamma ray",
+        wavelength: 1e-12, // 0.001 nm
+        notes: "Nuclear gamma emission."
+      }
+    ].map((band) => ({
+      ...band,
+      frequency: SPEED_OF_LIGHT / band.wavelength,
+      period: band.wavelength / SPEED_OF_LIGHT
+    }));
+
+    const pathCountInput = document.getElementById("pathCount");
+    const spectrumBandInput = document.getElementById("spectrumBand");
+
+    const pathCountLabel = document.getElementById("pathCountLabel");
+    const spectrumLabel = document.getElementById("spectrumLabel");
+    const bandNameEl = document.getElementById("bandName");
+    const bandWavelengthEl = document.getElementById("bandWavelength");
+    const bandFrequencyEl = document.getElementById("bandFrequency");
+    const bandPeriodEl = document.getElementById("bandPeriod");
+    const bandTurnsEl = document.getElementById("bandTurns");
+    const bandNotesEl = document.getElementById("bandNotes");
+    const netMagnitudeEl = document.getElementById("netMagnitude");
+    const netAngleEl = document.getElementById("netAngle");
+
+    const timeSvg = document.getElementById("timeSvg");
+    const phasorSvg = document.getElementById("phasorSvg");
+
+    const TIME_VIEWBOX = { width: 720, height: 320 };
+    const PHASOR_VIEWBOX = { width: 720, height: 320 };
+
+    function formatFrequency(hz) {
+      const thresholds = [
+        { value: 1e21, suffix: "ZHz" },
+        { value: 1e18, suffix: "EHz" },
+        { value: 1e15, suffix: "PHz" },
+        { value: 1e12, suffix: "THz" },
+        { value: 1e9, suffix: "GHz" },
+        { value: 1e6, suffix: "MHz" },
+        { value: 1e3, suffix: "kHz" },
+        { value: 1, suffix: "Hz" },
+        { value: 1e-3, suffix: "mHz" },
+        { value: 1e-6, suffix: "µHz" }
+      ];
+      const threshold = thresholds.find((t) => hz >= t.value) ?? thresholds[thresholds.length - 1];
+      const formatted = hz / threshold.value;
+      return `${formatted.toFixed(formatted >= 100 ? 0 : 2)} ${threshold.suffix}`;
+    }
+
+    function formatWavelength(meters) {
+      const units = [
+        { value: 1, suffix: "m" },
+        { value: 1e-3, suffix: "mm" },
+        { value: 1e-6, suffix: "µm" },
+        { value: 1e-9, suffix: "nm" },
+        { value: 1e-12, suffix: "pm" }
+      ];
+      const unit = units.find((u) => meters >= u.value) ?? units[units.length - 1];
+      const value = meters / unit.value;
+      if (value < 0.1 && unit.suffix !== "pm") {
+        const nextUnit = units[units.indexOf(unit) + 1];
+        return `${(meters / nextUnit.value).toFixed(2)} ${nextUnit.suffix}`;
+      }
+      return `${value.toFixed(value >= 100 ? 0 : 2)} ${unit.suffix}`;
+    }
+
+    function formatDuration(seconds) {
+      const units = [
+        { value: 1, suffix: "s" },
+        { value: 1e-3, suffix: "ms" },
+        { value: 1e-6, suffix: "µs" },
+        { value: 1e-9, suffix: "ns" },
+        { value: 1e-12, suffix: "ps" },
+        { value: 1e-15, suffix: "fs" },
+        { value: 1e-18, suffix: "as" },
+        { value: 1e-21, suffix: "zs" }
+      ];
+      const unit = units.find((u) => seconds >= u.value) ?? units[units.length - 1];
+      const value = seconds / unit.value;
+      return `${value.toFixed(value >= 100 ? 0 : 2)} ${unit.suffix}`;
+    }
+
+    function pathLabel(index) {
+      const alphabet = "ABCDEFGHIJKLMNOPQRSTUVWXYZ";
+      if (index < alphabet.length) {
+        return alphabet[index];
+      }
+      const prefix = alphabet[index % alphabet.length];
+      const suffix = Math.floor(index / alphabet.length);
+      return `${prefix}${suffix}`;
+    }
+
+    function computePathSet(count) {
+      const baseTime = 4.6e-15;
+      const spread = 2.6e-15;
+      const midpoint = (count - 1) / 2;
+
+      const paths = [];
+      for (let i = 0; i < count; i++) {
+        const normalized = count === 1 ? 0 : (i - midpoint) / midpoint;
+        const curvature = Math.pow(normalized, 2);
+        const gentleWobble = 0.12 * Math.sin(normalized * Math.PI * 1.3);
+        const time = baseTime + spread * (curvature + gentleWobble * curvature);
+        const colorHueStart = 206;
+        const colorHueEnd = 16;
+        const hue = colorHueStart + (colorHueEnd - colorHueStart) * (count === 1 ? 0.5 : i / (count - 1));
+        const color = `hsl(${hue}, 70%, 45%)`;
+        paths.push({
+          index: i,
+          label: pathLabel(i),
+          normalized,
+          travelTime: time,
+          color
+        });
+      }
+
+      const minTime = Math.min(...paths.map((p) => p.travelTime));
+      const maxTime = Math.max(...paths.map((p) => p.travelTime));
+
+      return { paths, minTime, maxTime };
+    }
+
+    function buildTimeSvg({ paths, minTime, maxTime }) {
+      const margin = { top: 36, right: 24, bottom: 80, left: 68 };
+      const width = TIME_VIEWBOX.width;
+      const height = TIME_VIEWBOX.height;
+      const innerWidth = width - margin.left - margin.right;
+      const innerHeight = height - margin.top - margin.bottom;
+
+      const range = Math.max(maxTime - minTime, 1e-18);
+
+      const points = paths.map((path, idx) => {
+        const x = margin.left + (paths.length === 1 ? innerWidth / 2 : (idx / (paths.length - 1)) * innerWidth);
+        const y = margin.top + (1 - (path.travelTime - minTime) / range) * innerHeight;
+        return { ...path, x, y };
+      });
+
+      const curve = points.map((point, idx) => `${idx === 0 ? "M" : "L"} ${point.x.toFixed(2)} ${point.y.toFixed(2)}`).join(" ");
+
+      const axisY = height - margin.bottom;
+      const axis = `<path d="M ${margin.left} ${axisY} L ${width - margin.right} ${axisY}" stroke="#1f2933" stroke-width="1.4" stroke-linecap="round" />`;
+
+      const ticks = points.map((point) => {
+        const tickLength = 10;
+        return `
+          <line x1="${point.x.toFixed(2)}" x2="${point.x.toFixed(2)}" y1="${axisY}" y2="${axisY + tickLength}" stroke="rgba(15, 23, 42, 0.3)" stroke-width="1" />
+          <text x="${point.x.toFixed(2)}" y="${axisY + 24}" text-anchor="middle" font-size="12" fill="rgba(15, 23, 42, 0.8)">
+            ${point.label}
+          </text>
+        `;
+      }).join("");
+
+      const crosses = points.map((point) => {
+        const size = 6;
+        return `
+          <line x1="${(point.x - size).toFixed(2)}" y1="${(point.y - size).toFixed(2)}" x2="${(point.x + size).toFixed(2)}" y2="${(point.y + size).toFixed(2)}"
+                stroke="${point.color}" stroke-width="2" stroke-linecap="round" />
+          <line x1="${(point.x - size).toFixed(2)}" y1="${(point.y + size).toFixed(2)}" x2="${(point.x + size).toFixed(2)}" y2="${(point.y - size).toFixed(2)}"
+                stroke="${point.color}" stroke-width="2" stroke-linecap="round" />
+        `;
+      }).join("");
+
+      const labels = `
+        <text x="${margin.left - 32}" y="${margin.top - 8}" font-size="12" fill="rgba(15, 23, 42, 0.7)" writing-mode="tb">
+          Faster
+        </text>
+        <text x="${margin.left - 32}" y="${height - margin.bottom + 48}" font-size="12" fill="rgba(15, 23, 42, 0.7)" writing-mode="tb">
+          Slower
+        </text>
+      `;
+
+      timeSvg.innerHTML = `
+        <g>
+          ${axis}
+          ${ticks}
+          <path d="${curve}" fill="none" stroke="rgba(11, 114, 133, 0.65)" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" />
+          ${crosses}
+          ${labels}
+        </g>
+      `;
+
+      return points;
+    }
+
+    function buildPhasorSvg(points, minTime, frequency) {
+      const margin = { top: 32, right: 40, bottom: 32, left: 40 };
+      const width = PHASOR_VIEWBOX.width;
+      const height = PHASOR_VIEWBOX.height;
+      const innerWidth = width - margin.left - margin.right;
+      const innerHeight = height - margin.top - margin.bottom;
+
+      const arrowLength = Math.max(8, innerWidth / (points.length + 2));
+      const start = { x: margin.left, y: height / 2 };
+
+      const lines = [];
+      let cursor = { ...start };
+
+      const endPoints = points.map((point) => {
+        const elapsed = point.travelTime - minTime;
+        const cycles = frequency * elapsed;
+        const fractionalCycle = cycles - Math.floor(cycles);
+        const angle = fractionalCycle * 2 * Math.PI;
+        const dx = Math.cos(angle) * arrowLength;
+        const dy = Math.sin(angle) * arrowLength;
+        const nextPoint = { x: cursor.x + dx, y: cursor.y - dy, angle, color: point.color, label: point.label };
+        lines.push({ from: { ...cursor }, to: { ...nextPoint }, color: point.color });
+        cursor = nextPoint;
+        return nextPoint;
+      });
+
+      const end = lines.length ? lines[lines.length - 1].to : start;
+      const netVector = { x: end.x - start.x, y: end.y - start.y };
+      const netLength = Math.hypot(netVector.x, netVector.y);
+      const netAngle = Math.atan2(start.y - end.y, end.x - start.x);
+
+      const defs = `
+        <defs>
+          <marker id="arrowHead" viewBox="0 0 10 10" refX="7" refY="5" markerWidth="6" markerHeight="6" orient="auto-start-reverse">
+            <path d="M 0 0 L 10 5 L 0 10 z" fill="currentColor"></path>
+          </marker>
+          <marker id="netArrowHead" viewBox="0 0 10 10" refX="7" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse">
+            <path d="M 0 0 L 10 5 L 0 10 z" fill="#212529"></path>
+          </marker>
+        </defs>
+      `;
+
+      const arrowLines = lines.map((line) => `
+        <line x1="${line.from.x.toFixed(2)}" y1="${line.from.y.toFixed(2)}"
+              x2="${line.to.x.toFixed(2)}" y2="${line.to.y.toFixed(2)}"
+              stroke="${line.color}" stroke-width="2.4"
+              marker-end="url(#arrowHead)" />
+      `).join("");
+
+      const polyline = [
+        `<polyline points="${[start, ...endPoints].map((p) => `${p.x.toFixed(2)},${p.y.toFixed(2)}`).join(" ")}"`,
+        `fill="none" stroke="rgba(15, 23, 42, 0.22)" stroke-width="1.2" stroke-dasharray="4 6" />`
+      ].join(" ");
+
+      const startCircle = `<circle cx="${start.x.toFixed(2)}" cy="${start.y.toFixed(2)}" r="5" fill="#0b7285" opacity="0.85" />`;
+      const endCircle = `<circle cx="${end.x.toFixed(2)}" cy="${end.y.toFixed(2)}" r="5.5" fill="#f59f00" opacity="0.95" stroke="white" stroke-width="1.6" />`;
+      const netLine = `
+        <line x1="${start.x.toFixed(2)}" y1="${start.y.toFixed(2)}"
+              x2="${end.x.toFixed(2)}" y2="${end.y.toFixed(2)}"
+              stroke="#212529" stroke-width="2.8" stroke-dasharray="2 5"
+              marker-end="url(#netArrowHead)" />
+      `;
+
+      phasorSvg.innerHTML = `
+        ${defs}
+        <g>
+          ${polyline}
+          ${arrowLines}
+          ${netLine}
+          ${startCircle}
+          ${endCircle}
+        </g>
+      `;
+
+      const magnitude = netLength / arrowLength;
+      const angleDegrees = ((netAngle * 180) / Math.PI + 360) % 360;
+      netMagnitudeEl.textContent = `${magnitude.toFixed(2)} × arrow length`;
+      netAngleEl.textContent = `${angleDegrees.toFixed(1)}°`;
+    }
+
+    function updateSpectrumDetails(band) {
+      pathCountLabel.textContent = pathCountInput.value;
+      spectrumLabel.textContent = band.name;
+      bandNameEl.textContent = band.name;
+      bandWavelengthEl.innerHTML = formatWavelength(band.wavelength);
+      bandFrequencyEl.innerHTML = formatFrequency(band.frequency);
+      bandPeriodEl.innerHTML = `${formatDuration(band.period)} per turn`;
+      bandTurnsEl.innerHTML = (band.frequency * 1e-15).toFixed(2);
+      bandNotesEl.textContent = band.notes;
+    }
+
+    function render() {
+      const count = Number(pathCountInput.value);
+      const band = SPECTRUM_BANDS[Number(spectrumBandInput.value)];
+      updateSpectrumDetails(band);
+      const { paths, minTime, maxTime } = computePathSet(count);
+      const points = buildTimeSvg({ paths, minTime, maxTime });
+      buildPhasorSvg(points, minTime, band.frequency);
+    }
+
+    pathCountInput.addEventListener("input", render);
+    spectrumBandInput.addEventListener("input", render);
+    render();
+  </script>
+</body>
+</html>
