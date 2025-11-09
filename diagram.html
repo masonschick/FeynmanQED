@@ -24,6 +24,10 @@
       background: linear-gradient(135deg, #0b7285, #1864ab);
       color: white;
       box-shadow: 0 1px 6px rgba(15, 23, 42, 0.25);
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 1rem;
     }
 
     header.topbar h1 {
@@ -174,6 +178,26 @@
       color: rgba(15, 23, 42, 0.65);
     }
 
+    .panel-toggle {
+      appearance: none;
+      border: 1px solid rgba(255,255,255,0.6);
+      background: rgba(255,255,255,0.12);
+      color: white;
+      padding: 0.35rem 0.7rem;
+      border-radius: 8px;
+      font-size: 0.9rem;
+      cursor: pointer;
+      transition: background 0.15s ease;
+    }
+
+    .panel-toggle:hover {
+      background: rgba(255,255,255,0.2);
+    }
+
+    body.panel-hidden aside.controls {
+      display: none;
+    }
+
     svg {
       width: 100%;
       height: auto;
@@ -231,6 +255,7 @@
 <body>
   <header class="topbar">
     <h1>QED Path Explorer</h1>
+    <button id="panelToggle" class="panel-toggle" aria-pressed="false" title="Hide or show the control panel">Hide panel</button>
   </header>
 
   <main class="app">
@@ -271,8 +296,8 @@
         </small>
       </div>
 
-      <details class="spectrum-details" id="spectrumDetails" open>
-        <summary id="spectrumSummary">Details: Red</summary>
+      <details class="spectrum-details" id="spectrumDetails">
+        <summary id="spectrumSummary">Details: … (click)</summary>
         <div class="sd-content">
           <div><strong>Band:</strong> <span id="bandName">Red</span></div>
           <div><strong>Representative wavelength:</strong> <span id="bandWavelength">650&nbsp;nm</span></div>
@@ -384,6 +409,7 @@
     const timeSvg = document.getElementById("timeSvg");
     const phasorSvg = document.getElementById("phasorSvg");
     const arrowsSvg = document.getElementById("arrowsSvg");
+  const panelToggleBtn = document.getElementById("panelToggle");
 
     const TIME_VIEWBOX = { width: 720, height: 320 };
     const PHASOR_VIEWBOX = { width: 720, height: 320 };
@@ -715,7 +741,7 @@
     function updateSpectrumDetails(band) {
       pathCountLabel.textContent = pathCountInput.value;
       spectrumLabel.textContent = band.name;
-      if (spectrumSummaryEl) spectrumSummaryEl.textContent = `Details: ${band.name}`;
+      if (spectrumSummaryEl) spectrumSummaryEl.textContent = `Details: … (click)`;
       bandNameEl.textContent = band.name;
       bandWavelengthEl.innerHTML = formatWavelength(band.wavelength);
       bandFrequencyEl.innerHTML = formatFrequency(band.frequency);
@@ -749,8 +775,17 @@
     gratingToggle.addEventListener("change", render);
 
     // Mobile: collapse details by default
-    if (spectrumDetailsEl && window.matchMedia("(max-width: 960px)").matches) {
+    if (spectrumDetailsEl) {
       spectrumDetailsEl.removeAttribute("open");
+    }
+
+    // Global panel toggle
+    if (panelToggleBtn) {
+      panelToggleBtn.addEventListener("click", () => {
+        const hidden = document.body.classList.toggle("panel-hidden");
+        panelToggleBtn.setAttribute("aria-pressed", hidden ? "true" : "false");
+        panelToggleBtn.textContent = hidden ? "Show panel" : "Hide panel";
+      });
     }
     render();
   </script>
