@@ -92,6 +92,31 @@
       font-size: 0.93rem;
     }
 
+    .spectrum-details summary {
+      cursor: pointer;
+      font-weight: 700;
+      color: #084c61;
+      margin: -0.25rem -0.2rem 0.25rem -0.2rem;
+      padding: 0.1rem 0.2rem 0.35rem 0.2rem;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+    }
+
+    .spectrum-details .sd-content {
+      display: block;
+      margin-top: 0.25rem;
+      display: flex;
+      flex-direction: column;
+      gap: 0.35rem;
+    }
+
+    .spectrum-details summary:focus {
+      outline: 2px solid rgba(11, 114, 133, 0.35);
+      outline-offset: 2px;
+      border-radius: 6px;
+    }
+
     .spectrum-details strong {
       color: #084c61;
     }
@@ -246,18 +271,21 @@
         </small>
       </div>
 
-      <div class="spectrum-details" id="spectrumDetails">
-        <div><strong>Band:</strong> <span id="bandName">Red</span></div>
-        <div><strong>Representative wavelength:</strong> <span id="bandWavelength">650&nbsp;nm</span></div>
-        <div class="explain" id="bandWavelengthExplain">“µm” means micrometers (um): thousandths of a millimeter. ≈ 0.00 mm</div>
-        <div><strong>Frequency:</strong> <span id="bandFrequency">461&nbsp;THz</span></div>
-        <div class="explain">Frequency = how many wave peaks (turns) pass a point each second.</div>
-        <div><strong>Clock period:</strong> <span id="bandPeriod">2.17&nbsp;fs per turn</span></div>
-        <div class="explain" id="bandPeriodExplain">One turn takes 0 s. That's 0 turns/second. In space: ≈ 0 cycles/in.</div>
-        <div><strong>Turns per femtosecond:</strong> <span id="bandTurns">0.46</span></div>
-        <div class="explain">A femtosecond (fs) is 10⁻¹⁵ seconds (one quadrillionth of a second).</div>
-        <div class="notes" id="bandNotes">Deep red laser pointers.</div>
-      </div>
+      <details class="spectrum-details" id="spectrumDetails" open>
+        <summary id="spectrumSummary">Details: Red</summary>
+        <div class="sd-content">
+          <div><strong>Band:</strong> <span id="bandName">Red</span></div>
+          <div><strong>Representative wavelength:</strong> <span id="bandWavelength">650&nbsp;nm</span></div>
+          <div class="explain" id="bandWavelengthExplain">“µm” means micrometers (um): thousandths of a millimeter. ≈ 0.00 mm</div>
+          <div><strong>Frequency:</strong> <span id="bandFrequency">461&nbsp;THz</span></div>
+          <div class="explain">Frequency = how many wave peaks (turns) pass a point each second.</div>
+          <div><strong>Clock period:</strong> <span id="bandPeriod">2.17&nbsp;fs per turn</span></div>
+          <div class="explain" id="bandPeriodExplain">One turn takes 0 s. That's 0 turns/second. In space: ≈ 0 cycles/in.</div>
+          <div><strong>Turns per femtosecond:</strong> <span id="bandTurns">0.46</span></div>
+          <div class="explain">A femtosecond (fs) is 10⁻¹⁵ seconds (one quadrillionth of a second).</div>
+          <div class="notes" id="bandNotes">Deep red laser pointers.</div>
+        </div>
+      </details>
     </aside>
 
     <section class="visuals">
@@ -348,6 +376,8 @@
     const bandPeriodEl = document.getElementById("bandPeriod");
     const bandTurnsEl = document.getElementById("bandTurns");
     const bandNotesEl = document.getElementById("bandNotes");
+    const spectrumSummaryEl = document.getElementById("spectrumSummary");
+    const spectrumDetailsEl = document.getElementById("spectrumDetails");
     const netMagnitudeEl = document.getElementById("netMagnitude");
     const netAngleEl = document.getElementById("netAngle");
 
@@ -685,6 +715,7 @@
     function updateSpectrumDetails(band) {
       pathCountLabel.textContent = pathCountInput.value;
       spectrumLabel.textContent = band.name;
+      if (spectrumSummaryEl) spectrumSummaryEl.textContent = `Details: ${band.name}`;
       bandNameEl.textContent = band.name;
       bandWavelengthEl.innerHTML = formatWavelength(band.wavelength);
       bandFrequencyEl.innerHTML = formatFrequency(band.frequency);
@@ -716,6 +747,11 @@
     pathCountInput.addEventListener("input", render);
     spectrumBandInput.addEventListener("input", render);
     gratingToggle.addEventListener("change", render);
+
+    // Mobile: collapse details by default
+    if (spectrumDetailsEl && window.matchMedia("(max-width: 960px)").matches) {
+      spectrumDetailsEl.removeAttribute("open");
+    }
     render();
   </script>
 </body>
